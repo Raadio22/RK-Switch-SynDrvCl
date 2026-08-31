@@ -1,0 +1,21 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 512 512" role="img" aria-labelledby="title desc">
+  <title id="title">RK-Switch</title>
+  <desc id="desc">Geometrický monogram RK se dvěma síťovými trasami a přepínačem.</desc>
+  <defs>
+    <clipPath id="tile"><rect width="512" height="512" rx="112"/></clipPath>
+  </defs>
+  <rect width="512" height="512" rx="112" fill="#0B2B4C"/>
+  <g clip-path="url(#tile)" fill="none" stroke="#09A7BE" stroke-width="12" stroke-linecap="round">
+    <path d="M298 70h214" opacity=".9"/>
+    <path d="M298 210h214" opacity=".72"/>
+    <path d="M318 70v33M318 177v33" opacity=".72"/>
+    <rect x="318" y="101" width="174" height="78" rx="39" fill="#09A7BE" stroke="none" opacity=".92"/>
+  </g>
+  <g fill="#FFAA00">
+    <circle cx="447" cy="140" r="29"/>
+    <circle cx="318" cy="70" r="14"/>
+    <circle cx="486" cy="210" r="14"/>
+  </g>
+  <path d="m269 301 88-97h76l-86 97 90 89h-79z" fill="#09A7BE"/>
+  <path fill="#FFFFFF" fill-rule="evenodd" d="M92 390V204h119c50 0 80 27 80 70 0 34-18 56-47 67l42 49h-70l-38-46h-24v46H92Zm62-139v48h53c14 0 22-9 22-24 0-16-9-24-22-24h-53Z"/>
+</svg>

@@ -1,0 +1,36 @@
+<Project Sdk="Microsoft.NET.Sdk">
+  <PropertyGroup>
+    <OutputType>WinExe</OutputType>
+    <TargetFramework>net8.0-windows</TargetFramework>
+    <UseWPF>true</UseWPF>
+    <Nullable>enable</Nullable>
+    <ImplicitUsings>enable</ImplicitUsings>
+    <AssemblyName>RK-Switch-SynDrvCl</AssemblyName>
+    <RootNamespace>RKSwitch.SynDrvCl</RootNamespace>
+    <ApplicationManifest>app.manifest</ApplicationManifest>
+    <ApplicationIcon>Assets\rk-switch.ico</ApplicationIcon>
+    <Version>0.2.0</Version>
+    <PublishSingleFile>true</PublishSingleFile>
+    <SelfContained>true</SelfContained>
+    <RuntimeIdentifier>win-x64</RuntimeIdentifier>
+    <IncludeNativeLibrariesForSelfExtract>true</IncludeNativeLibrariesForSelfExtract>
+    <EnableCompressionInSingleFile>true</EnableCompressionInSingleFile>
+    <DebugType Condition="'$(Configuration)' == 'Release'">none</DebugType>
+    <DebugSymbols Condition="'$(Configuration)' == 'Release'">false</DebugSymbols>
+  </PropertyGroup>
+  <ItemGroup>
+    <Compile Remove="tests\**\*.cs" />
+    <EmbeddedResource Remove="tests\**\*" />
+    <None Remove="tests\**\*" />
+  </ItemGroup>
+  <ItemGroup>
+    <None Remove="Assets\rk-switch.ico" />
+    <None Remove="Assets\rk-switch.png" />
+    <Resource Include="Assets\rk-switch.ico" />
+    <Resource Include="Assets\rk-switch.png" />
+  </ItemGroup>
+  <ItemGroup>
+    <None Update="README.md" CopyToPublishDirectory="PreserveNewest" />
+    <None Update="DEPLOYMENT.md" CopyToPublishDirectory="PreserveNewest" />
+  </ItemGroup>
+</Project>

@@ -1,0 +1,140 @@
+<Window x:Class="RKSwitch.SynDrvCl.MainWindow"
+        xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
+        xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+        Title="RK-Switch SynDrvCl" Icon="Assets/rk-switch.ico"
+        Height="680" Width="980" MinHeight="620" MinWidth="860"
+        ResizeMode="CanResizeWithGrip" WindowStartupLocation="CenterScreen" Background="#F3F6FA">
+  <Grid>
+    <Grid.ColumnDefinitions><ColumnDefinition Width="230"/><ColumnDefinition Width="*"/></Grid.ColumnDefinitions>
+
+    <Border Background="{StaticResource BrandNavy}">
+      <Grid Margin="18">
+        <Grid.RowDefinitions><RowDefinition Height="Auto"/><RowDefinition Height="*"/><RowDefinition Height="Auto"/></Grid.RowDefinitions>
+        <StackPanel>
+          <Image Source="Assets/rk-switch.png" Width="92" Height="92" HorizontalAlignment="Left"
+                 RenderOptions.BitmapScalingMode="HighQuality"/>
+          <TextBlock Text="RK-Switch" Foreground="White" FontSize="25" FontWeight="SemiBold" Margin="0,13,0,0"/>
+          <TextBlock Text="Synology Drive Client" Foreground="#C7D8ED" FontSize="13" Margin="0,3,0,0"/>
+          <Border Height="1" Background="#54708F" Margin="0,20,0,18"/>
+        </StackPanel>
+        <StackPanel Grid.Row="1">
+          <TextBlock Text="BEZPEČNÉ PŘEPÍNÁNÍ" Foreground="#8FB2D8" FontSize="10" FontWeight="SemiBold"/>
+          <StackPanel Orientation="Horizontal" Margin="0,14,0,0">
+            <Ellipse Width="8" Height="8" Fill="{StaticResource BrandTeal}" Margin="0,5,9,0" VerticalAlignment="Top"/>
+            <TextBlock Text="Oficiální nastavení Synology" Foreground="White" TextWrapping="Wrap" FontSize="12"/>
+          </StackPanel>
+          <StackPanel Orientation="Horizontal" Margin="0,12,0,0">
+            <Ellipse Width="8" Height="8" Fill="{StaticResource BrandAmber}" Margin="0,5,9,0" VerticalAlignment="Top"/>
+            <TextBlock Text="Kontrola TCP a MAC ve firmě" Foreground="White" TextWrapping="Wrap" FontSize="12"/>
+          </StackPanel>
+          <StackPanel Orientation="Horizontal" Margin="0,12,0,0">
+            <Ellipse Width="8" Height="8" Fill="#FFFFFF" Margin="0,5,9,0" VerticalAlignment="Top"/>
+            <TextBlock Text="Bez ukládání hesel" Foreground="White" TextWrapping="Wrap" FontSize="12"/>
+          </StackPanel>
+        </StackPanel>
+        <StackPanel Grid.Row="2">
+          <TextBlock Text="RK-Switch SynDrvCl" Foreground="#BFD0E8" FontSize="11"/>
+          <TextBlock Text="verze 0.2.0" Foreground="#829DBD" FontSize="10" Margin="0,3,0,0"/>
+        </StackPanel>
+      </Grid>
+    </Border>
+
+    <Grid Grid.Column="1">
+      <Grid.RowDefinitions><RowDefinition Height="Auto"/><RowDefinition Height="*"/></Grid.RowDefinitions>
+      <Border Grid.Row="0" Padding="26,18" BorderBrush="#B8D8E3" BorderThickness="0,0,0,1">
+        <Border.Background>
+          <LinearGradientBrush StartPoint="0,0.5" EndPoint="1,0.5">
+            <GradientStop Color="#FCFEFF" Offset="0"/><GradientStop Color="#EDF9FC" Offset="0.58"/><GradientStop Color="#FFF7E7" Offset="1"/>
+          </LinearGradientBrush>
+        </Border.Background>
+        <Grid>
+          <Grid.ColumnDefinitions><ColumnDefinition/><ColumnDefinition Width="Auto"/></Grid.ColumnDefinitions>
+          <StackPanel>
+            <TextBlock Text="Přepnutí trasy Synology Drive" FontSize="25" FontWeight="SemiBold" Foreground="#183153"/>
+            <TextBlock Text="Rychlá volba místní sítě nebo QuickConnect" Foreground="#59697D" Margin="0,4,0,0"/>
+          </StackPanel>
+          <Border Grid.Column="1" Background="#0B2B4C" CornerRadius="10" Padding="12,8" VerticalAlignment="Center">
+            <StackPanel Orientation="Horizontal">
+              <Ellipse x:Name="HeaderStateDot" Width="10" Height="10" Fill="#94A3B8" Margin="0,0,8,0" VerticalAlignment="Center"/>
+              <TextBlock x:Name="HeaderStateText" Text="Zjišťuji stav…" Foreground="White" FontWeight="SemiBold"/>
+            </StackPanel>
+          </Border>
+        </Grid>
+      </Border>
+
+      <ScrollViewer Grid.Row="1" VerticalScrollBarVisibility="Auto" HorizontalScrollBarVisibility="Disabled">
+        <StackPanel Margin="26" MaxWidth="900">
+          <Border x:Name="StateCard" Style="{StaticResource Card}" BorderBrush="#B8D8E3">
+            <Grid>
+              <Grid.ColumnDefinitions><ColumnDefinition Width="Auto"/><ColumnDefinition Width="*"/><ColumnDefinition Width="Auto"/></Grid.ColumnDefinitions>
+              <Border Width="54" Height="54" CornerRadius="27" Background="#E6F8FA" Margin="0,0,16,0">
+                <Grid><Ellipse x:Name="StateDot" Width="18" Height="18" Fill="#94A3B8"/></Grid>
+              </Border>
+              <StackPanel Grid.Column="1" VerticalAlignment="Center">
+                <TextBlock Text="AKTUÁLNÍ STAV" Foreground="#64748B" FontSize="10" FontWeight="SemiBold"/>
+                <TextBlock x:Name="ModeText" Text="Zjišťuji…" Foreground="#183153" FontSize="22" FontWeight="SemiBold" Margin="0,3,0,0"/>
+                <TextBlock x:Name="EndpointText" Text="" Foreground="#59697D" FontSize="12" Margin="0,2,0,0"/>
+              </StackPanel>
+              <StackPanel Grid.Column="2" VerticalAlignment="Center" HorizontalAlignment="Right">
+                <TextBlock x:Name="ClientStateText" Text="Synology Drive: zjišťuji…" Foreground="#334155" HorizontalAlignment="Right"/>
+                <TextBlock x:Name="LastCheckedText" Text="" Foreground="#64748B" FontSize="10" HorizontalAlignment="Right" Margin="0,3,0,0"/>
+              </StackPanel>
+            </Grid>
+          </Border>
+
+          <TextBlock Text="ZVOLTE TRASU" Foreground="#64748B" FontSize="10" FontWeight="SemiBold" Margin="2,20,0,2"/>
+          <Grid>
+            <Grid.ColumnDefinitions><ColumnDefinition/><ColumnDefinition Width="14"/><ColumnDefinition/></Grid.ColumnDefinitions>
+            <Button x:Name="CompanyButton" Click="CompanyButton_Click" Background="#09A7BE" BorderBrush="#07899C"
+                    Foreground="White" MinHeight="112" HorizontalContentAlignment="Stretch">
+              <Grid Margin="5"><Grid.ColumnDefinitions><ColumnDefinition/><ColumnDefinition Width="Auto"/></Grid.ColumnDefinitions>
+                <StackPanel VerticalAlignment="Center">
+                  <TextBlock Text="FIRMA" FontSize="25" FontWeight="SemiBold"/>
+                  <TextBlock Text="Místní NAS · 192.168.1.2" FontSize="13" Margin="0,5,0,0"/>
+                  <TextBlock Text="Nejrychlejší firemní připojení" FontSize="11" Foreground="#D9FAFF" Margin="0,3,0,0"/>
+                </StackPanel>
+                <TextBlock Grid.Column="1" Text="›" FontSize="36" VerticalAlignment="Center" Margin="14,0,2,0"/>
+              </Grid>
+            </Button>
+            <Button x:Name="RemoteButton" Grid.Column="2" Click="RemoteButton_Click" Background="#0B2B4C" BorderBrush="#173F73"
+                    Foreground="White" MinHeight="112" HorizontalContentAlignment="Stretch">
+              <Grid Margin="5"><Grid.ColumnDefinitions><ColumnDefinition/><ColumnDefinition Width="Auto"/></Grid.ColumnDefinitions>
+                <StackPanel VerticalAlignment="Center">
+                  <TextBlock Text="MIMO FIRMU" FontSize="25" FontWeight="SemiBold"/>
+                  <TextBlock Text="QuickConnect · NAS-ZemOlsar" FontSize="13" Margin="0,5,0,0"/>
+                  <TextBlock Text="Připojení odkudkoliv" FontSize="11" Foreground="#C7D8ED" Margin="0,3,0,0"/>
+                </StackPanel>
+                <TextBlock Grid.Column="1" Text="›" FontSize="36" Foreground="#FFAA00" VerticalAlignment="Center" Margin="14,0,2,0"/>
+              </Grid>
+            </Button>
+          </Grid>
+
+          <Border x:Name="DryRunBanner" Background="#FFF7E7" BorderBrush="#FFD277" BorderThickness="1" CornerRadius="9" Padding="12" Margin="0,14,0,0">
+            <StackPanel Orientation="Horizontal">
+              <TextBlock Text="●" Foreground="#FFAA00" FontSize="13" Margin="0,0,9,0"/>
+              <TextBlock x:Name="DryRunText" Text="ZKUŠEBNÍ REŽIM – připojení nebude změněno" Foreground="#7A4D00" FontWeight="SemiBold"/>
+            </StackPanel>
+          </Border>
+
+          <Border Style="{StaticResource Card}" Margin="0,14,0,0" Padding="16">
+            <TextBlock x:Name="StatusText" Text="Připraveno." Foreground="#334155" TextWrapping="Wrap" MinHeight="38" VerticalAlignment="Center"/>
+          </Border>
+
+          <Border Style="{StaticResource Card}" Margin="0,14,0,0" Padding="16">
+            <Grid>
+              <Grid.ColumnDefinitions><ColumnDefinition/><ColumnDefinition Width="Auto"/></Grid.ColumnDefinitions>
+              <StackPanel>
+                <CheckBox x:Name="StartupCheckBox" Content="Spouštět automaticky po přihlášení do Windows"
+                          Checked="StartupModeChanged" Unchecked="StartupModeChanged"/>
+                <CheckBox x:Name="LiveModeCheckBox" Content="Povolit živé změny připojení" Margin="0,13,0,0"
+                          Checked="LiveModeChanged" Unchecked="LiveModeChanged"/>
+              </StackPanel>
+              <Button Grid.Column="1" Content="↻  Obnovit stav" Padding="16,9" VerticalAlignment="Center" Margin="18,0,0,0"
+                      Click="RefreshButton_Click"/>
+            </Grid>
+          </Border>
+        </StackPanel>
+      </ScrollViewer>
+    </Grid>
+  </Grid>
+</Window>
