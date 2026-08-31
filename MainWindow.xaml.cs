@@ -1,4 +1,6 @@
 using System.Diagnostics;
+using System.IO;
+using System.Security;
 using System.Windows;
 using System.Windows.Media;
 using System.Windows.Threading;
@@ -28,13 +30,15 @@ public partial class MainWindow : Window
         Closed += (_, _) => _stateTimer.Stop();
     }
 
-    private bool IsDryRun => LiveModeCheckBox.IsChecked != true;
+    private bool IsDryRun => TestModeCheckBox.IsChecked == true;
 
     private async void Window_Loaded(object sender, RoutedEventArgs e)
     {
+        AppLog.Info("Aplikace 0.3.0 spuštěna.");
         _loadingStartupSetting = true;
         try { StartupCheckBox.IsChecked = StartupRegistration.IsEnabled(); }
         finally { _loadingStartupSetting = false; }
+        UpdateCredentialStatus();
         await RefreshStateAsync();
         _stateTimer.Start();
     }
@@ -48,15 +52,16 @@ public partial class MainWindow : Window
     private async void RefreshButton_Click(object sender, RoutedEventArgs e) =>
         await RefreshStateAsync();
 
-    private void LiveModeChanged(object sender, RoutedEventArgs e)
+    private void TestModeChanged(object sender, RoutedEventArgs e)
     {
-        var live = LiveModeCheckBox.IsChecked == true;
-        DryRunBanner.Background = new SolidColorBrush((Color)ColorConverter.ConvertFromString(live ? "#FFF0F0" : "#FFF7E7"));
-        DryRunBanner.BorderBrush = new SolidColorBrush((Color)ColorConverter.ConvertFromString(live ? "#F2A6A6" : "#FFD277"));
-        DryRunText.Foreground = new SolidColorBrush((Color)ColorConverter.ConvertFromString(live ? "#9F1D1D" : "#7A4D00"));
-        DryRunText.Text = live
-            ? "ŽIVÉ ZMĚNY POVOLENY – před každým přepnutím bude potvrzení"
-            : "ZKUŠEBNÍ REŽIM – připojení nebude změněno";
+        var testOnly = TestModeCheckBox.IsChecked == true;
+        DryRunBanner.Background = new SolidColorBrush((Color)ColorConverter.ConvertFromString(testOnly ? "#FFF7E7" : "#FFF0F0"));
+        DryRunBanner.BorderBrush = new SolidColorBrush((Color)ColorConverter.ConvertFromString(testOnly ? "#FFD277" : "#F2A6A6"));
+        DryRunText.Foreground = new SolidColorBrush((Color)ColorConverter.ConvertFromString(testOnly ? "#7A4D00" : "#9F1D1D"));
+        DryRunText.Text = testOnly
+            ? "TESTOVACÍ REŽIM – připojení nebude změněno"
+            : "ŽIVÝ REŽIM – kliknutí na trasu provede přepnutí";
+        AppLog.Info(testOnly ? "Zapnut testovací režim bez změn." : "Zapnut živý režim s automatickým přepnutím.");
     }
 
     private void StartupModeChanged(object sender, RoutedEventArgs e)
@@ -66,12 +71,14 @@ public partial class MainWindow : Window
         try
         {
             StartupRegistration.SetEnabled(enabled);
+            AppLog.Info(enabled ? "Automatické spuštění zapnuto." : "Automatické spuštění vypnuto.");
             StatusText.Text = enabled
                 ? "Automatické spuštění po přihlášení do Windows je zapnuté."
                 : "Automatické spuštění po přihlášení do Windows je vypnuté.";
         }
         catch (Exception ex)
         {
+            AppLog.Error("Změna automatického spuštění selhala", ex);
             _loadingStartupSetting = true;
             try { StartupCheckBox.IsChecked = !enabled; }
             finally { _loadingStartupSetting = false; }
@@ -83,15 +90,18 @@ public partial class MainWindow : Window
     private async Task RefreshStateAsync()
     {
         if (_busy) return;
+        AppLog.Info("Obnova aktuálního stavu zahájena.");
         SetBusy(true, "Zjišťuji režim přes oficiální nastavení Synology Drive…");
         try
         {
             var result = await Task.Run(() => _synology.Inspect());
             UpdateCurrentState(result.CurrentServer);
             StatusText.Text = result.Message;
+            AppLog.Info($"Obnova stavu dokončena. Režim: {ModeClassifier.DisplayName(result.CurrentServer)}.");
         }
         catch (Exception ex)
         {
+            AppLog.Error("Obnova aktuálního stavu selhala", ex);
             UpdateCurrentState(null);
             StatusText.Text = ErrorText(ex);
         }
@@ -108,6 +118,8 @@ public partial class MainWindow : Window
         if (_busy) return;
         var target = mode == ConnectionMode.Company ? AppConfig.CompanyAddress : AppConfig.QuickConnectId;
         var dryRun = IsDryRun;
+        SecureString? password = null;
+        AppLog.Info($"Požadavek na režim {mode}; cíl {target}; testovací režim: {dryRun}.");
 
         if (!dryRun)
         {
@@ -118,23 +130,57 @@ public partial class MainWindow : Window
                 TransferState.Idle => "Nebyl rozpoznán probíhající přenos.",
                 _ => "Probíhající přenos nelze z UI spolehlivě zjistit. Zkontrolujte jej ručně v Synology Drive."
             };
-            var answer = MessageBox.Show(
-                $"Chystáte se živě změnit adresu serveru na:\n\n{target}\n\n{transferText}\n\n" +
-                "Účet, heslo, SSL a synchronizační úlohy aplikace nemění. Po potvrzení Synology může zobrazit vlastní dialog nebo varování certifikátu; to musíte posoudit ručně.\n\nPokračovat?",
-                "Potvrzení živého přepnutí", MessageBoxButton.YesNo, MessageBoxImage.Warning, MessageBoxResult.No);
-            if (answer != MessageBoxResult.Yes)
+
+            if (WindowsCredentialStore.TryRead(out password))
             {
-                StatusText.Text = "Přepnutí zrušeno uživatelem.";
-                return;
+                AppLog.Info("Heslo bylo načteno ze Správce přihlašovacích údajů Windows; hodnota nebyla logována.");
+                if (transfer == TransferState.Active && MessageBox.Show(
+                        $"{transferText}\n\nPřesto pokračovat v přepnutí na {target}?",
+                        "Probíhá přenos", MessageBoxButton.YesNo, MessageBoxImage.Warning) != MessageBoxResult.Yes)
+                {
+                    password.Dispose();
+                    AppLog.Info("Živé přepnutí zrušeno kvůli probíhajícímu přenosu.");
+                    StatusText.Text = "Přepnutí zrušeno uživatelem.";
+                    return;
+                }
+            }
+            else
+            {
+                var prompt = new PasswordPromptWindow(target, transferText) { Owner = this };
+                if (prompt.ShowDialog() != true)
+                {
+                    AppLog.Info("Živé přepnutí zrušeno při prvním zadání hesla.");
+                    StatusText.Text = "Přepnutí zrušeno uživatelem.";
+                    return;
+                }
+                password = prompt.TakePassword();
+                if (prompt.ShouldSavePassword)
+                {
+                    try
+                    {
+                        WindowsCredentialStore.Save(password);
+                        AppLog.Info("Heslo bylo uloženo do Správce přihlašovacích údajů Windows; hodnota nebyla logována.");
+                        UpdateCredentialStatus();
+                    }
+                    catch (Exception ex)
+                    {
+                        password.Dispose();
+                        AppLog.Error("Uložení hesla do Windows selhalo", ex);
+                        StatusText.Text = ErrorText(ex);
+                        MessageBox.Show(StatusText.Text, "Heslo nebylo uloženo", MessageBoxButton.OK, MessageBoxImage.Error);
+                        return;
+                    }
+                }
             }
         }
 
         SetBusy(true, mode == ConnectionMode.Company ? "Bezpečně ověřuji místní NAS…" : "Připravuji QuickConnect…");
         try
         {
-            var result = await Task.Run(() => _synology.Switch(mode, dryRun));
+            var result = await Task.Run(() => _synology.Switch(mode, dryRun, password));
             UpdateCurrentState(result.CurrentServer);
             StatusText.Text = result.Message;
+            AppLog.Info($"Operace dokončena. {result.Message}");
             if (result.NeedsUserAttention)
             {
                 HeaderStateText.Text = "Ruční kontrola";
@@ -144,11 +190,13 @@ public partial class MainWindow : Window
         }
         catch (Exception ex)
         {
+            AppLog.Error($"Přepnutí na {target} selhalo", ex);
             StatusText.Text = ErrorText(ex);
             MessageBox.Show(StatusText.Text, "Přepnutí se nezdařilo", MessageBoxButton.OK, MessageBoxImage.Error);
         }
         finally
         {
+            password?.Dispose();
             _lastRefresh = DateTimeOffset.Now;
             LastCheckedText.Text = $"Aktualizováno {_lastRefresh:HH:mm:ss}";
             SetBusy(false);
@@ -190,10 +238,49 @@ public partial class MainWindow : Window
         _busy = busy;
         CompanyButton.IsEnabled = !busy;
         RemoteButton.IsEnabled = !busy;
-        LiveModeCheckBox.IsEnabled = !busy;
+        TestModeCheckBox.IsEnabled = !busy;
         StartupCheckBox.IsEnabled = !busy;
+        CredentialButton.IsEnabled = !busy;
         if (text is not null) StatusText.Text = text;
     }
 
+    private void UpdateCredentialStatus()
+    {
+        try
+        {
+            CredentialStatusText.Text = WindowsCredentialStore.Exists
+                ? "Heslo: bezpečně uloženo ve Windows"
+                : "Heslo: zatím není uloženo";
+        }
+        catch (Exception ex)
+        {
+            CredentialStatusText.Text = "Heslo: stav nelze zjistit";
+            AppLog.Error("Kontrola uloženého hesla selhala", ex);
+        }
+    }
+
+    private void ManageCredential_Click(object sender, RoutedEventArgs e)
+    {
+        var window = new CredentialSettingsWindow { Owner = this };
+        window.ShowDialog();
+        UpdateCredentialStatus();
+    }
+
     private static string ErrorText(Exception ex) => $"Chyba: {ex.Message}";
+
+    private void OpenLog_Click(object sender, RoutedEventArgs e)
+    {
+        AppLog.Info("Uživatel otevřel diagnostický log.");
+        try
+        {
+            Directory.CreateDirectory(AppLog.DirectoryPath);
+            if (!File.Exists(AppLog.FilePath)) File.WriteAllText(AppLog.FilePath, "");
+            Process.Start(new ProcessStartInfo(AppLog.FilePath) { UseShellExecute = true });
+        }
+        catch (Exception ex)
+        {
+            AppLog.Error("Otevření diagnostického logu selhalo", ex);
+            MessageBox.Show(ErrorText(ex), "Diagnostický log", MessageBoxButton.OK, MessageBoxImage.Error);
+        }
+    }
 }

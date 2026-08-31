@@ -9,6 +9,7 @@ internal sealed class NetworkSafetyProbe
 {
     public async Task VerifyCompanyNasAsync(CancellationToken cancellationToken = default)
     {
+        AppLog.Info($"Ověřuji místní NAS {AppConfig.CompanyAddress}:{AppConfig.SynologyDrivePort}.");
         var address = IPAddress.Parse(AppConfig.CompanyAddress);
         if (address.AddressFamily != AddressFamily.InterNetwork)
             throw new InvalidOperationException("Místní adresa NAS není IPv4.");
@@ -28,6 +29,7 @@ internal sealed class NetworkSafetyProbe
         var actualMac = ResolveMac(address);
         if (!string.Equals(ModeClassifier.NormalizeMac(actualMac), ModeClassifier.NormalizeMac(AppConfig.NasMac), StringComparison.Ordinal))
             throw new InvalidOperationException($"MAC zařízení na {AppConfig.CompanyAddress} je {actualMac}, očekávána {AppConfig.NasMac}. Přepnutí bylo zablokováno.");
+        AppLog.Info($"Místní NAS ověřen. MAC: {actualMac}.");
     }
 
     private static string ResolveMac(IPAddress address)

@@ -12,12 +12,16 @@ Vzhled navazuje na RK-Spp a společnou ikonovou rodinu RK-Geo/RK-Spp. Hlavní st
 ## Bezpečnostní hranice
 
 - Aplikace neotevírá ani nemění SQLite databáze Synology Drive.
-- Nečte, neukládá ani nezapisuje heslo.
+- Heslo lze jednou uložit jako obecný přihlašovací údaj ve **Správci přihlašovacích údajů Windows**. Je dostupné jen aktuálnímu účtu Windows a aplikace je nikdy nezapisuje do konfigurace, registru spuštění ani logu.
 - Nemění uživatelský účet, SSL ani synchronizační úlohy.
 - Zapisuje pouze pole **Adresa serveru** přes Windows UI Automation a aktivuje oficiální tlačítko **OK**.
 - Certifikátová a jiná potvrzení Synology nikdy nepotvrzuje automaticky.
-- Výchozí stav je **zkušební režim**: UI se jen přečte a dialog se ukončí přes **Storno**.
+- Výchozí stav je **živý režim**: pokud je heslo uložené, kliknutí na trasu změní pouze adresu serveru, vyplní heslo do oficiálního dialogu Synology a aktivuje jeho tlačítko **OK**. Při spolehlivě rozpoznaném aktivním přenosu se stále zobrazí varování.
+- Volitelný režim **Pouze otestovat bez změny připojení** provede všechny bezpečnostní kontroly, ale dialog ukončí přes **Storno**.
 - Volba **Spouštět automaticky po přihlášení do Windows** používá pouze uživatelský klíč `HKCU\\Software\\Microsoft\\Windows\\CurrentVersion\\Run`; nevyžaduje správce a lze ji stejným přepínačem opět vypnout.
+- Diagnostický log bez hesel je v `%LOCALAPPDATA%\\RK-Switch-SynDrvCl\\logs\\rk-switch.log` a lze jej otevřít přímo z aplikace.
+
+Při prvním živém přepnutí aplikace vyžádá heslo účtu DSM a nabídne jeho uložení do zabezpečeného úložiště Windows. Další přepnutí už proběhnou jedním kliknutím. Tlačítko **Správa hesla** umožňuje údaj kdykoli nahradit nebo odstranit. Uživatelské jméno se nepřepisuje; zůstává uložené v Synology Drive.
 
 ## Sestavení
 
@@ -30,11 +34,11 @@ Výsledný samostatný EXE je v `bin\Release\net8.0-windows\win-x64\publish`.
 
 ## Ověřovací pořadí
 
-1. Na `RAADIO-BOOK4PRO` spustit výchozí zkušební režim.
+1. Na `RAADIO-BOOK4PRO` zapnout **Pouze otestovat bez změny připojení**.
 2. Stisknout obě tlačítka a potvrdit, že nic nebylo změněno; u režimu FIRMA musí proběhnout TCP + MAC kontrola.
 3. Ověřit zobrazený aktuální server proti dialogu Synology Drive.
 4. Před prvním živým testem dokončit/pozastavit přenosy a vytvořit běžnou uživatelskou zálohu nastavení Synology.
-5. Teprve potom zaškrtnout **Povolit živé změny**, přečíst varování a potvrdit jeden směr.
+5. Přes **Správa hesla** uložit heslo DSM, vypnout testovací režim a kliknout na požadovanou trasu.
 6. Ručně ověřit stav všech synchronizačních úloh a případné varování certifikátu.
 
 Viz také [DEPLOYMENT.md](DEPLOYMENT.md).
