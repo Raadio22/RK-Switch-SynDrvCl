@@ -7,7 +7,7 @@ Jednoduchá Windows aplikace pro ruční přepnutí **oficiálního nastavení**
 - **FIRMA** – `192.168.1.2` (povoleno jen po úspěšném TCP testu portu `6690` a shodě ARP MAC `90-09-D0-90-16-7D`)
 - **MIMO FIRMU** – QuickConnect ID `NAS-ZemOlsar`
 
-Vzhled navazuje na RK-Spp a společnou ikonovou rodinu RK-Geo/RK-Spp. Hlavní stavová karta zobrazuje aktuální trasu, cílovou adresu, dostupnost procesu Synology Drive a čas poslední kontroly. Při aktivním okně se stav automaticky obnovuje jednou za minutu.
+Vzhled navazuje na RK-Spp a společnou ikonovou rodinu RK-Geo/RK-Spp. Při spuštění se zobrazí krátká značková obrazovka s průběhem načítání. Hlavní stavová karta zobrazuje aktuální trasu, cílovou adresu, dostupnost procesu Synology Drive a čas poslední kontroly. Při aktivním okně se stav automaticky obnovuje jednou za minutu. Rozložení hlavního okna i dialogů je upravené tak, aby byly ovládací prvky celé viditelné; přihlašovací dialog má pro malé pracovní plochy posuvnou pouze střední část a pevně viditelná tlačítka.
 
 ## Bezpečnostní hranice
 

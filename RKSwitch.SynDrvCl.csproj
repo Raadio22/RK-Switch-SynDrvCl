@@ -9,7 +9,7 @@
     <RootNamespace>RKSwitch.SynDrvCl</RootNamespace>
     <ApplicationManifest>app.manifest</ApplicationManifest>
     <ApplicationIcon>Assets\rk-switch.ico</ApplicationIcon>
-    <Version>0.3.0</Version>
+    <Version>0.4.0</Version>
     <PublishSingleFile>true</PublishSingleFile>
     <SelfContained>true</SelfContained>
     <RuntimeIdentifier>win-x64</RuntimeIdentifier>
@@ -22,6 +22,9 @@
     <Compile Remove="tests\**\*.cs" />
     <EmbeddedResource Remove="tests\**\*" />
     <None Remove="tests\**\*" />
+    <Compile Remove="work\**\*.cs" />
+    <EmbeddedResource Remove="work\**\*" />
+    <None Remove="work\**\*" />
   </ItemGroup>
   <ItemGroup>
     <None Remove="Assets\rk-switch.ico" />

@@ -9,6 +9,8 @@ namespace RKSwitch.SynDrvCl;
 
 public partial class MainWindow : Window
 {
+    internal event EventHandler? InitialLoadCompleted;
+
     private static readonly Brush Teal = new SolidColorBrush(Color.FromRgb(9, 167, 190));
     private static readonly Brush Amber = new SolidColorBrush(Color.FromRgb(255, 170, 0));
     private static readonly Brush Muted = new SolidColorBrush(Color.FromRgb(148, 163, 184));
@@ -34,13 +36,20 @@ public partial class MainWindow : Window
 
     private async void Window_Loaded(object sender, RoutedEventArgs e)
     {
-        AppLog.Info("Aplikace 0.3.0 spuštěna.");
-        _loadingStartupSetting = true;
-        try { StartupCheckBox.IsChecked = StartupRegistration.IsEnabled(); }
-        finally { _loadingStartupSetting = false; }
-        UpdateCredentialStatus();
-        await RefreshStateAsync();
-        _stateTimer.Start();
+        AppLog.Info("Aplikace 0.4.0 spuštěna.");
+        try
+        {
+            _loadingStartupSetting = true;
+            try { StartupCheckBox.IsChecked = StartupRegistration.IsEnabled(); }
+            finally { _loadingStartupSetting = false; }
+            UpdateCredentialStatus();
+            await RefreshStateAsync();
+            _stateTimer.Start();
+        }
+        finally
+        {
+            InitialLoadCompleted?.Invoke(this, EventArgs.Empty);
+        }
     }
 
     private async void CompanyButton_Click(object sender, RoutedEventArgs e) =>
