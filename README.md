@@ -9,6 +9,8 @@ Jednoduchá Windows aplikace pro ruční přepnutí **oficiálního nastavení**
 
 Vzhled navazuje na RK-Spp a společnou ikonovou rodinu RK-Geo/RK-Spp. Při spuštění se zobrazí krátká značková obrazovka s průběhem načítání. Hlavní stavová karta zobrazuje aktuální trasu, cílovou adresu, dostupnost procesu Synology Drive a čas poslední kontroly. Při aktivním okně se stav automaticky obnovuje jednou za minutu. Rozložení hlavního okna i dialogů je upravené tak, aby byly ovládací prvky celé viditelné; přihlašovací dialog má pro malé pracovní plochy posuvnou pouze střední část a pevně viditelná tlačítka.
 
+Volitelná funkce **Automaticky přepínat podle sítě** sama volí FIRMA nebo MIMO FIRMU. Kontroluje síť po spuštění aplikace, po změně síťového připojení a dále jednou za minutu. Za firemní síť považuje pouze stav, kdy odpovídá `192.168.1.2:6690` a zároveň souhlasí MAC adresa NASu. Označení sítě ve Windows jako soukromá nebo veřejná samo o sobě rozhodnutí neovlivňuje.
+
 ## Bezpečnostní hranice
 
 - Aplikace neotevírá ani nemění SQLite databáze Synology Drive.
@@ -19,6 +21,8 @@ Vzhled navazuje na RK-Spp a společnou ikonovou rodinu RK-Geo/RK-Spp. Při spuš
 - Výchozí stav je **živý režim**: pokud je heslo uložené, kliknutí na trasu změní pouze adresu serveru, vyplní heslo do oficiálního dialogu Synology a aktivuje jeho tlačítko **OK**. Při spolehlivě rozpoznaném aktivním přenosu se stále zobrazí varování.
 - Volitelný režim **Pouze otestovat bez změny připojení** provede všechny bezpečnostní kontroly, ale dialog ukončí přes **Storno**.
 - Volba **Spouštět automaticky po přihlášení do Windows** používá pouze uživatelský klíč `HKCU\\Software\\Microsoft\\Windows\\CurrentVersion\\Run`; nevyžaduje správce a lze ji stejným přepínačem opět vypnout.
+- Volba **Automaticky přepínat podle sítě** vyžaduje předem uložené heslo. Při rozpoznaném aktivním přenosu změnu odloží, při odchodu z firmy síť pro jistotu ověří podruhé a po změně dodržuje krátkou ochrannou prodlevu. Nastavení volby se ukládá pouze pro aktuální účet Windows do `HKCU\\Software\\RK-Switch-SynDrvCl`.
+- Automatika funguje, jen když běží RK-Switch. Pro automatické přepnutí hned po přihlášení je proto vhodné zapnout i **Spouštět po přihlášení do Windows**.
 - Diagnostický log bez hesel je v `%LOCALAPPDATA%\\RK-Switch-SynDrvCl\\logs\\rk-switch.log` a lze jej otevřít přímo z aplikace.
 
 Při prvním živém přepnutí aplikace vyžádá heslo účtu DSM a nabídne jeho uložení do zabezpečeného úložiště Windows. Další přepnutí už proběhnou jedním kliknutím. Tlačítko **Správa hesla** umožňuje údaj kdykoli nahradit nebo odstranit. Uživatelské jméno se nepřepisuje; zůstává uložené v Synology Drive.

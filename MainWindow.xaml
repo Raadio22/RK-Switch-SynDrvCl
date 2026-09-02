@@ -34,7 +34,7 @@
         </StackPanel>
         <StackPanel Grid.Row="2">
           <TextBlock Text="RK-Switch SynDrvCl" Foreground="#BFD0E8" FontSize="11"/>
-          <TextBlock Text="verze 0.4.0" Foreground="#829DBD" FontSize="10" Margin="0,3,0,0"/>
+          <TextBlock Text="verze 0.5.0" Foreground="#829DBD" FontSize="10" Margin="0,3,0,0"/>
         </StackPanel>
       </Grid>
     </Border>
@@ -124,12 +124,18 @@
             <Grid>
               <Grid.ColumnDefinitions><ColumnDefinition/><ColumnDefinition Width="Auto"/></Grid.ColumnDefinitions>
               <Grid.RowDefinitions><RowDefinition Height="Auto"/><RowDefinition Height="Auto"/></Grid.RowDefinitions>
-              <StackPanel Grid.ColumnSpan="2">
-                <CheckBox x:Name="StartupCheckBox" Content="Spouštět automaticky po přihlášení do Windows"
+              <Grid Grid.ColumnSpan="2">
+                <Grid.ColumnDefinitions><ColumnDefinition/><ColumnDefinition/></Grid.ColumnDefinitions>
+                <Grid.RowDefinitions><RowDefinition Height="Auto"/><RowDefinition Height="Auto"/></Grid.RowDefinitions>
+                <CheckBox x:Name="StartupCheckBox" Content="Spouštět po přihlášení do Windows"
                           Checked="StartupModeChanged" Unchecked="StartupModeChanged"/>
-                <CheckBox x:Name="TestModeCheckBox" Content="Pouze otestovat bez změny připojení" Margin="0,13,0,0"
+                <CheckBox Grid.Column="1" x:Name="AutoSwitchCheckBox" Content="Automaticky přepínat podle sítě"
+                          Margin="18,0,0,0" Checked="AutoSwitchModeChanged" Unchecked="AutoSwitchModeChanged"/>
+                <CheckBox Grid.Row="1" x:Name="TestModeCheckBox" Content="Pouze otestovat bez změny" Margin="0,12,0,0"
                           Checked="TestModeChanged" Unchecked="TestModeChanged"/>
-              </StackPanel>
+                <TextBlock Grid.Row="1" Grid.Column="1" x:Name="AutoSwitchStatusText" Text="Automatika: zjišťuji…"
+                           Foreground="#59697D" FontSize="11" Margin="44,13,0,0" VerticalAlignment="Center"/>
+              </Grid>
               <TextBlock Grid.Row="1" x:Name="CredentialStatusText" Text="Heslo: zjišťuji…" Foreground="#59697D" FontSize="11" Margin="26,14,0,0" VerticalAlignment="Center"/>
               <StackPanel Grid.Row="1" Grid.Column="1" Orientation="Horizontal" VerticalAlignment="Center" Margin="18,10,0,0">
                 <Button x:Name="CredentialButton" Content="Správa hesla" Padding="12,8" Click="ManageCredential_Click"/>

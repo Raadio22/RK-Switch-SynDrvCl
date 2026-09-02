@@ -7,6 +7,19 @@ namespace RKSwitch.SynDrvCl;
 
 internal sealed class NetworkSafetyProbe
 {
+    public async Task<CompanyNetworkStatus> DetectCompanyNetworkAsync(CancellationToken cancellationToken = default)
+    {
+        try
+        {
+            await VerifyCompanyNasAsync(cancellationToken);
+            return new(true, $"Místní NAS {AppConfig.CompanyAddress} je dostupný a MAC souhlasí.");
+        }
+        catch (InvalidOperationException ex)
+        {
+            return new(false, ex.Message);
+        }
+    }
+
     public async Task VerifyCompanyNasAsync(CancellationToken cancellationToken = default)
     {
         AppLog.Info($"Ověřuji místní NAS {AppConfig.CompanyAddress}:{AppConfig.SynologyDrivePort}.");
@@ -46,3 +59,5 @@ internal sealed class NetworkSafetyProbe
     [DllImport("iphlpapi.dll", ExactSpelling = true)]
     private static extern int SendARP(int destinationIp, int sourceIp, byte[] macAddress, ref int physicalAddressLength);
 }
+
+internal sealed record CompanyNetworkStatus(bool IsCompanyNetwork, string Message);
