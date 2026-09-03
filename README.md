@@ -11,6 +11,8 @@ Vzhled navazuje na RK-Spp a společnou ikonovou rodinu RK-Geo/RK-Spp. Při spuš
 
 Volitelná funkce **Automaticky přepínat podle sítě** sama volí FIRMA nebo MIMO FIRMU. Kontroluje síť po spuštění aplikace, po změně síťového připojení a dále jednou za minutu. Za firemní síť považuje pouze stav, kdy odpovídá `192.168.1.2:6690` a zároveň souhlasí MAC adresa NASu. Označení sítě ve Windows jako soukromá nebo veřejná samo o sobě rozhodnutí neovlivňuje.
 
+Pokud se RK-Switch spustí dříve než Synology Drive Client, zobrazí stav čekání a zkouší klienta znovu načíst každých pět sekund po dobu tří minut. Jakmile je Synology připravené, načte jeho aktuální server a případné automatické přepnutí provede až potom. Následně zůstává aktivní pravidelná minutová kontrola.
+
 ## Bezpečnostní hranice
 
 - Aplikace neotevírá ani nemění SQLite databáze Synology Drive.

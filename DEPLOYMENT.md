@@ -14,6 +14,7 @@ Pilot musí proběhnout nejprve se zapnutou volbou **Pouze otestovat bez změny 
 6. Pokud má aplikace startovat s Windows, nejprve ji rozbalit do trvalého umístění a až potom zapnout volbu **Spouštět automaticky po přihlášení do Windows**. Registrace je pouze pro aktuálního uživatele a nevyžaduje administrátorská práva.
 7. Heslo je nutné uložit samostatně pod každým účtem Windows, který aplikaci používá. Lze je změnit nebo odstranit tlačítkem **Správa hesla**.
 8. Volbu **Automaticky přepínat podle sítě** zapnout až po uložení hesla a ověření ručního přepnutí oběma směry. Automatika kontroluje síť při startu, po změně připojení a každou minutu; pro provoz po přihlášení zapnout také automatické spuštění aplikace.
+9. Po přihlášení může RK-Switch naběhnout dříve než Synology Drive. V takovém případě až tři minuty čeká a stav zkouší znovu každých pět sekund; není nutné aplikaci ručně restartovat.
 
 ## Známá omezení
 

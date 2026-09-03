@@ -19,8 +19,10 @@ public partial class MainWindow : Window
     private readonly NetworkSafetyProbe _networkProbe = new();
     private readonly DispatcherTimer _stateTimer;
     private CancellationTokenSource? _networkChangeDebounce;
+    private CancellationTokenSource? _startupRecovery;
     private bool _busy;
     private bool _autoSwitchRunning;
+    private bool _startupRecoveryRunning;
     private bool _loadingStartupSetting;
     private bool _loadingAutoSwitchSetting;
     private string? _currentServer;
@@ -46,6 +48,8 @@ public partial class MainWindow : Window
             _stateTimer.Stop();
             _networkChangeDebounce?.Cancel();
             _networkChangeDebounce?.Dispose();
+            _startupRecovery?.Cancel();
+            _startupRecovery?.Dispose();
             NetworkChange.NetworkAddressChanged -= NetworkAddressChanged;
         };
     }
@@ -54,7 +58,7 @@ public partial class MainWindow : Window
 
     private async void Window_Loaded(object sender, RoutedEventArgs e)
     {
-        AppLog.Info("Aplikace 0.6.0 spuštěna.");
+        AppLog.Info("Aplikace 0.7.0 spuštěna.");
         try
         {
             _loadingStartupSetting = true;
@@ -71,8 +75,7 @@ public partial class MainWindow : Window
         finally
         {
             InitialLoadCompleted?.Invoke(this, EventArgs.Empty);
-            if (AutoSwitchCheckBox.IsChecked == true)
-                _ = Dispatcher.BeginInvoke(new Action(async () => await EvaluateAutomaticSwitchAsync("spuštění aplikace")));
+            _ = Dispatcher.BeginInvoke(new Action(StartStartupRecovery));
         }
     }
 
@@ -129,7 +132,11 @@ public partial class MainWindow : Window
             UserPreferences.AutomaticSwitchingEnabled = enabled;
             UpdateAutoSwitchStatus(enabled ? "zapnutá · čekám na kontrolu" : "vypnutá");
             AppLog.Info(enabled ? "Automatické přepínání podle sítě zapnuto." : "Automatické přepínání podle sítě vypnuto.");
-            if (enabled) await EvaluateAutomaticSwitchAsync("zapnutí automatiky");
+            if (enabled)
+            {
+                if (string.IsNullOrWhiteSpace(_currentServer)) StartStartupRecovery();
+                else await EvaluateAutomaticSwitchAsync("zapnutí automatiky");
+            }
         }
         catch (Exception ex)
         {
@@ -171,6 +178,80 @@ public partial class MainWindow : Window
         Dispatcher.BeginInvoke(new Action(ScheduleAutomaticCheckAfterNetworkChange));
     }
 
+    private void StartStartupRecovery()
+    {
+        if (_startupRecoveryRunning) return;
+
+        _startupRecovery?.Cancel();
+        _startupRecovery?.Dispose();
+        _startupRecovery = new CancellationTokenSource();
+        _ = RecoverSynologyStartupAsync(_startupRecovery.Token);
+    }
+
+    private async Task RecoverSynologyStartupAsync(CancellationToken cancellationToken)
+    {
+        var waitUntil = DateTime.UtcNow + TimeSpan.FromMinutes(3);
+        var attempt = 0;
+        _startupRecoveryRunning = true;
+        try
+        {
+            if (!string.IsNullOrWhiteSpace(_currentServer))
+            {
+                _startupRecoveryRunning = false;
+                if (AutoSwitchCheckBox.IsChecked == true)
+                    await EvaluateAutomaticSwitchAsync("spuštění aplikace");
+                return;
+            }
+
+            AppLog.Info("Synology Drive při spuštění RK-Switch ještě nebyl připraven; zahájeno čekání.");
+            while (DateTime.UtcNow < waitUntil)
+            {
+                attempt++;
+                cancellationToken.ThrowIfCancellationRequested();
+                ClientStateText.Text = "Synology Drive: čekám na spuštění";
+                StatusText.Text = $"Čekám, až se Synology Drive Client spustí… (pokus {attempt})";
+                if (AutoSwitchCheckBox.IsChecked == true)
+                    UpdateAutoSwitchStatus("čeká na Synology Drive");
+
+                await Task.Delay(TimeSpan.FromSeconds(5), cancellationToken);
+                if (_busy || !IsSynologyUiProcessRunning()) continue;
+
+                AppLog.Info($"Synology Drive proces nalezen při pokusu {attempt}; znovu zjišťuji stav.");
+                await RefreshStateAsync();
+                if (string.IsNullOrWhiteSpace(_currentServer)) continue;
+
+                AppLog.Info("Synology Drive je připraven a jeho stav byl po opožděném startu načten.");
+                _startupRecoveryRunning = false;
+                if (AutoSwitchCheckBox.IsChecked == true)
+                    await EvaluateAutomaticSwitchAsync("opožděné spuštění Synology Drive");
+                return;
+            }
+
+            StatusText.Text = "Synology Drive se zatím nepodařilo načíst. Kontrola bude pokračovat každou minutu.";
+            if (AutoSwitchCheckBox.IsChecked == true)
+                UpdateAutoSwitchStatus("čeká na Synology Drive · další kontrola za minutu");
+            AppLog.Info("Čekání na opožděný start Synology Drive skončilo; pokračuje pravidelná minutová kontrola.");
+        }
+        catch (OperationCanceledException)
+        {
+            AppLog.Info("Čekání na spuštění Synology Drive bylo ukončeno.");
+        }
+        finally
+        {
+            _startupRecoveryRunning = false;
+        }
+    }
+
+    private static bool IsSynologyUiProcessRunning()
+    {
+        var processes = Process.GetProcessesByName("cloud-drive-ui");
+        try { return processes.Length > 0; }
+        finally
+        {
+            foreach (var process in processes) process.Dispose();
+        }
+    }
+
     private void ScheduleAutomaticCheckAfterNetworkChange()
     {
         if (AutoSwitchCheckBox.IsChecked != true) return;
@@ -196,7 +277,7 @@ public partial class MainWindow : Window
 
     private async Task EvaluateAutomaticSwitchAsync(string reason)
     {
-        if (AutoSwitchCheckBox.IsChecked != true || _busy || _autoSwitchRunning) return;
+        if (AutoSwitchCheckBox.IsChecked != true || _busy || _autoSwitchRunning || _startupRecoveryRunning) return;
         if (IsDryRun)
         {
             UpdateAutoSwitchStatus("pozastavená testovacím režimem");
