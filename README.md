@@ -17,7 +17,7 @@ Volitelná funkce **Automaticky přepínat podle sítě** sama volí FIRMA nebo 
 - Heslo lze jednou uložit jako obecný přihlašovací údaj ve **Správci přihlašovacích údajů Windows**. Je dostupné jen aktuálnímu účtu Windows a aplikace je nikdy nezapisuje do konfigurace, registru spuštění ani logu.
 - Nemění uživatelský účet, SSL ani synchronizační úlohy.
 - Zapisuje pouze pole **Adresa serveru** přes Windows UI Automation a aktivuje oficiální tlačítko **OK**.
-- Certifikátová a jiná potvrzení Synology nikdy nepotvrzuje automaticky.
+- Při přechodu na **FIRMA** program vybere v nabídce QuickConnect volbu **Nyní ne**. Nedůvěryhodný SSL certifikát potvrdí volbou **Přesto pokračovat** pouze pro cílovou adresu `192.168.1.2` a až po opakovaném úspěšném ověření portu a přesné MAC adresy NASu. Jiné dialogy automaticky nepotvrzuje.
 - Výchozí stav je **živý režim**: pokud je heslo uložené, kliknutí na trasu změní pouze adresu serveru, vyplní heslo do oficiálního dialogu Synology a aktivuje jeho tlačítko **OK**. Při spolehlivě rozpoznaném aktivním přenosu se stále zobrazí varování.
 - Volitelný režim **Pouze otestovat bez změny připojení** provede všechny bezpečnostní kontroly, ale dialog ukončí přes **Storno**.
 - Volba **Spouštět automaticky po přihlášení do Windows** používá pouze uživatelský klíč `HKCU\\Software\\Microsoft\\Windows\\CurrentVersion\\Run`; nevyžaduje správce a lze ji stejným přepínačem opět vypnout.

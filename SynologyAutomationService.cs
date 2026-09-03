@@ -14,6 +14,8 @@ internal sealed class SynologyAutomationService
     private static readonly string[] SettingsTitles = ["Nastavení", "Settings"];
     private static readonly string[] OkNames = ["OK"];
     private static readonly string[] CancelNames = ["Storno", "Cancel"];
+    private static readonly string[] NotNowNames = ["Nyní ne", "Not now"];
+    private static readonly string[] ProceedAnywayNames = ["Přesto pokračovat", "Proceed anyway", "Continue anyway"];
     private static readonly string[] UnsavedChangesTexts =
     [
         "Změny nejsou uloženy",
@@ -97,16 +99,23 @@ internal sealed class SynologyAutomationService
             submitted = true;
             AppLog.Info("Oficiální tlačítko OK aktivováno.");
 
-            Thread.Sleep(1200);
-            var warning = FindCertificateOrWarningWindow();
-            if (warning is not null)
-                return new(target, "Synology Drive zobrazil varování nebo potvrzovací dialog. Aplikace s ním záměrně nemanipulovala; zkontrolujte jej ručně.", true);
-
-            var remainingSettings = WaitForSettingsToClose(TimeSpan.FromSeconds(5));
+            var confirmationResult = ResolvePostSubmitDialogs(mode, target, TimeSpan.FromSeconds(18));
+            var remainingSettings = confirmationResult.RemainingSettings;
             if (remainingSettings is not null)
-                return new(target, "Oficiální dialog Synology Drive zůstal po stisku OK otevřený. Může vyžadovat heslo, opravu údaje nebo jiné ruční rozhodnutí; aplikace už nic dalšího neprovedla.", true);
+            {
+                var message = "Oficiální dialog Synology Drive zůstal po potvrzení otevřený. Zkontrolujte případnou chybu přihlášení nebo jiný neočekávaný požadavek.";
+                if (mode == ConnectionMode.Remote)
+                {
+                    AppLog.Info($"{message} Režim MIMO FIRMU nebude blokován vyskakovacím oknem RK-Switch.");
+                    return new(target, "Přepnutí na QuickConnect bylo odesláno; Synology Drive ještě dokončuje připojení.");
+                }
+                return new(target, message, true);
+            }
 
-            return new(target, $"Synology Drive byl přepnut na {target}. Uložené uživatelské jméno, SSL a synchronizační úlohy zůstaly beze změny.");
+            var handled = confirmationResult.HandledQuickConnectOffer || confirmationResult.HandledCertificate
+                ? " Potřebná potvrzení Synology byla bezpečně vyřízena."
+                : "";
+            return new(target, $"Synology Drive byl přepnut na {target}.{handled} Uložené uživatelské jméno a synchronizační úlohy zůstaly beze změny.");
         }
         catch
         {
@@ -146,19 +155,6 @@ internal sealed class SynologyAutomationService
     private static AutomationElement? FindSettingsWindow() =>
         FindTopWindow(e => SettingsTitles.Any(t => string.Equals(SafeName(e), t, StringComparison.OrdinalIgnoreCase)) &&
                            FindNamedElement(e, ServerFieldNames) is not null);
-
-    private static AutomationElement? WaitForSettingsToClose(TimeSpan timeout)
-    {
-        var until = DateTime.UtcNow + timeout;
-        AutomationElement? settings;
-        do
-        {
-            settings = FindSettingsWindow();
-            if (settings is null) return null;
-            Thread.Sleep(150);
-        } while (DateTime.UtcNow < until);
-        return settings;
-    }
 
     private static AutomationElement OpenSettings(AutomationElement main)
     {
@@ -210,14 +206,92 @@ internal sealed class SynologyAutomationService
         finally { plainText = string.Empty; }
     }
 
-    private static AutomationElement? FindCertificateOrWarningWindow() => FindTopWindow(e =>
+    private PostSubmitResult ResolvePostSubmitDialogs(ConnectionMode mode, string target, TimeSpan timeout)
     {
-        var name = SafeName(e);
-        if (!name.Contains("Synology", StringComparison.OrdinalIgnoreCase) && !name.Contains("cert", StringComparison.OrdinalIgnoreCase)) return false;
-        var allText = string.Join(" ", e.FindAll(TreeScope.Descendants, Condition.TrueCondition).Cast<AutomationElement>().Select(SafeName));
-        return new[] { "certifik", "certificate", "varování", "warning", "nedůvěryhod" }
-            .Any(w => allText.Contains(w, StringComparison.OrdinalIgnoreCase));
-    });
+        var until = DateTime.UtcNow + timeout;
+        var handledQuickConnectOffer = false;
+        var handledCertificate = false;
+
+        do
+        {
+            if (mode == ConnectionMode.Company && !handledQuickConnectOffer)
+            {
+                var quickConnectOffer = FindDialog(SynologyDialogKind.QuickConnectOffer, NotNowNames);
+                if (quickConnectOffer is not null)
+                {
+                    InvokeNamedButton(quickConnectOffer, NotNowNames);
+                    handledQuickConnectOffer = true;
+                    AppLog.Info("Dotaz Synology na přechod k QuickConnect vyřízen volbou Nyní ne.");
+                    Thread.Sleep(250);
+                    continue;
+                }
+            }
+
+            if (mode == ConnectionMode.Company && !handledCertificate)
+            {
+                var certificate = FindDialog(SynologyDialogKind.UntrustedCertificate, ProceedAnywayNames);
+                if (certificate is not null)
+                {
+                    var settings = FindSettingsWindow();
+                    if (settings is not null &&
+                        !string.Equals(ReadServer(settings)?.Trim(), target, StringComparison.OrdinalIgnoreCase))
+                        throw new InvalidOperationException("Certifikátové potvrzení neodpovídá cílové adrese firemního NASu.");
+
+                    _networkProbe.VerifyCompanyNasAsync().GetAwaiter().GetResult();
+                    InvokeNamedButton(certificate, ProceedAnywayNames);
+                    handledCertificate = true;
+                    AppLog.Info("Nedůvěryhodný SSL certifikát místního NASu potvrzen až po opakované kontrole TCP a MAC.");
+                    Thread.Sleep(250);
+                    continue;
+                }
+            }
+
+            var remainingSettings = FindSettingsWindow();
+            if (remainingSettings is null &&
+                FindDialog(SynologyDialogKind.QuickConnectOffer, NotNowNames) is null &&
+                FindDialog(SynologyDialogKind.UntrustedCertificate, ProceedAnywayNames) is null)
+                return new(null, handledQuickConnectOffer, handledCertificate);
+
+            Thread.Sleep(150);
+        } while (DateTime.UtcNow < until);
+
+        return new(FindSettingsWindow(), handledQuickConnectOffer, handledCertificate);
+    }
+
+    private static AutomationElement? FindDialog(SynologyDialogKind kind, IEnumerable<string> buttonNames)
+    {
+        var windows = AutomationElement.RootElement.FindAll(TreeScope.Children,
+            new PropertyCondition(AutomationElement.ControlTypeProperty, ControlType.Window));
+        foreach (AutomationElement window in windows)
+        {
+            if (DialogMatches(window, kind, buttonNames)) return window;
+
+            var sheets = window.FindAll(TreeScope.Descendants,
+                new PropertyCondition(AutomationElement.ControlTypeProperty, ControlType.Custom));
+            foreach (AutomationElement sheet in sheets)
+                if (DialogMatches(sheet, kind, buttonNames)) return sheet;
+        }
+        return null;
+    }
+
+    private static bool DialogMatches(AutomationElement element, SynologyDialogKind kind, IEnumerable<string> buttonNames)
+    {
+        try
+        {
+            if (FindNamedElement(element, buttonNames) is null) return false;
+            return SynologyDialogPolicy.Classify(AllText(element)) == kind;
+        }
+        catch (ElementNotAvailableException)
+        {
+            return false;
+        }
+    }
+
+    private static string AllText(AutomationElement element) => string.Join(" ",
+        new[] { SafeName(element) }.Concat(
+            element.FindAll(TreeScope.Descendants, Condition.TrueCondition)
+                .Cast<AutomationElement>()
+                .Select(SafeName)));
 
     private static AutomationElement? FindTopWindow(Func<AutomationElement, bool> predicate) =>
         AutomationElement.RootElement.FindAll(TreeScope.Children,
@@ -303,4 +377,9 @@ internal sealed class SynologyAutomationService
 
     [DllImport("user32.dll")]
     private static extern bool SetForegroundWindow(IntPtr hWnd);
+
+    private sealed record PostSubmitResult(
+        AutomationElement? RemainingSettings,
+        bool HandledQuickConnectOffer,
+        bool HandledCertificate);
 }

@@ -19,6 +19,6 @@ Pilot musí proběhnout nejprve se zapnutou volbou **Pouze otestovat bez změny 
 
 - UI Automation závisí na názvech prvků české nebo anglické verze Synology Drive. Jiný jazyk nebo budoucí změna UI skončí bezpečnou chybou před zápisem.
 - Stav probíhajícího přenosu není v buildu 17892 vždy spolehlivě přístupný přes accessibility. V takovém případě aplikace zobrazí, že jej má uživatel zkontrolovat ručně.
-- Pokud Synology po změně otevře certifikátové varování, aplikace jej ponechá otevřené bez zásahu.
+- Při přechodu na FIRMA aplikace automaticky odmítne nabídku přechodu na QuickConnect a potvrdí nedůvěryhodný SSL certifikát pouze po opakované shodě cílové IP, TCP portu a MAC adresy. Neznámá potvrzení ponechá bez zásahu.
 - Automatická kontrola aktuálního stavu může krátce otevřít oficiální okno Synology Drive; dialog připojení aplikace pouze přečte a ukončí přes Storno.
 - Krátký výpadek dostupnosti NASu může znamenat přechod na QuickConnect. Odchod z firemní sítě se proto potvrzuje druhou kontrolou a po přepnutí platí ochranná prodleva.

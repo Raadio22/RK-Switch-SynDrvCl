@@ -54,7 +54,7 @@ public partial class MainWindow : Window
 
     private async void Window_Loaded(object sender, RoutedEventArgs e)
     {
-        AppLog.Info("Aplikace 0.5.0 spuštěna.");
+        AppLog.Info("Aplikace 0.6.0 spuštěna.");
         try
         {
             _loadingStartupSetting = true;
@@ -393,7 +393,7 @@ public partial class MainWindow : Window
             UpdateCurrentState(result.CurrentServer);
             StatusText.Text = result.Message;
             AppLog.Info($"Operace dokončena. {result.Message}");
-            if (result.NeedsUserAttention)
+            if (result.NeedsUserAttention && mode == ConnectionMode.Company)
             {
                 HeaderStateText.Text = "Ruční kontrola";
                 HeaderStateDot.Fill = Amber;

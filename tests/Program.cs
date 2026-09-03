@@ -19,6 +19,13 @@ if (!AutomaticSwitchPolicy.RequiresSwitch(AppConfig.QuickConnectId, ConnectionMo
 if (AutomaticSwitchPolicy.RequiresSwitch(AppConfig.CompanyAddress, ConnectionMode.Company))
     throw new Exception("Automatika: správně nastavená FIRMA se nesmí přepínat znovu.");
 
+if (SynologyDialogPolicy.Classify("Chcete přejít na QuickConnect? Tato metoda připojení posiluje ochranu dat.") != SynologyDialogKind.QuickConnectOffer)
+    throw new Exception("Dialog Synology: česká nabídka QuickConnect nebyla rozpoznána.");
+if (SynologyDialogPolicy.Classify("Certifikát SSL produktu Synology NAS není důvěryhodný. Přesto pokračovat") != SynologyDialogKind.UntrustedCertificate)
+    throw new Exception("Dialog Synology: české certifikátové varování nebylo rozpoznáno.");
+if (SynologyDialogPolicy.Classify("Běžné nastavení Synology Drive") != SynologyDialogKind.None)
+    throw new Exception("Dialog Synology: běžné okno bylo chybně označeno jako varování.");
+
 await new NetworkSafetyProbe().VerifyCompanyNasAsync();
 
-Console.WriteLine("PASS: klasifikace režimů, automatická volba, normalizace MAC, TCP 192.168.1.2:6690 a ARP MAC.");
+Console.WriteLine("PASS: režimy, automatická volba, přesné dialogy Synology, TCP 192.168.1.2:6690 a ARP MAC.");
