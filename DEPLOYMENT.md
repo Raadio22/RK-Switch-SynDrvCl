@@ -4,6 +4,8 @@
 
 Pilot musí proběhnout nejprve se zapnutou volbou **Pouze otestovat bez změny připojení**. Živý test není součást automatického buildu ani testů. Po pilotu se heslo uloží pro aktuální účet do Správce přihlašovacích údajů Windows; další ruční kliknutí na trasu provede celý oficiální postup automaticky.
 
+Pro běžné nasazení použijte od verze 0.8.0 instalační EXE místo ručního rozbalování ZIPu. Instalace i odinstalace běží v kontextu aktuálního uživatele bez zvýšených oprávnění.
+
 ## Další firemní počítače
 
 1. Po úspěšném pilotu distribuovat podepsaný/hashovaný obsah balíčku z `outputs`.
@@ -15,6 +17,11 @@ Pilot musí proběhnout nejprve se zapnutou volbou **Pouze otestovat bez změny 
 7. Heslo je nutné uložit samostatně pod každým účtem Windows, který aplikaci používá. Lze je změnit nebo odstranit tlačítkem **Správa hesla**.
 8. Volbu **Automaticky přepínat podle sítě** zapnout až po uložení hesla a ověření ručního přepnutí oběma směry. Automatika kontroluje síť při startu, po změně připojení a každou minutu; pro provoz po přihlášení zapnout také automatické spuštění aplikace.
 9. Po přihlášení může RK-Switch naběhnout dříve než Synology Drive. V takovém případě až tři minuty čeká a stav zkouší znovu každých pět sekund; není nutné aplikaci ručně restartovat.
+10. Před upgradem nebo odinstalací dokončit právě probíhající přepnutí a zavřít RK-Switch. Instalátor běžící aplikaci rozpozná a nepokračuje, dokud není bezpečně zavřená.
+
+## Odinstalace
+
+Odinstalátor odstraní pouze součásti RK-Switch: instalované soubory, zástupce, přesnou hodnotu automatického spuštění, klíč uživatelských předvoleb, vlastní log a uložené heslo DSM pro RK-Switch. Nedotýká se `%LOCALAPPDATA%\SynologyDrive`, nastavení klienta Synology ani synchronizovaných dat. Upgrade se stejným AppId odinstalátor nespouští a uživatelský stav zachovává.
 
 ## Známá omezení
 

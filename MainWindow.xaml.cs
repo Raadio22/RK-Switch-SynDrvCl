@@ -1,3 +1,4 @@
+using System.ComponentModel;
 using System.Diagnostics;
 using System.IO;
 using System.Net.NetworkInformation;
@@ -43,6 +44,7 @@ public partial class MainWindow : Window
         };
         NetworkChange.NetworkAddressChanged += NetworkAddressChanged;
         Loaded += Window_Loaded;
+        Closing += Window_Closing;
         Closed += (_, _) =>
         {
             _stateTimer.Stop();
@@ -56,9 +58,19 @@ public partial class MainWindow : Window
 
     private bool IsDryRun => TestModeCheckBox.IsChecked == true;
 
+    private void Window_Closing(object? sender, CancelEventArgs e)
+    {
+        if (!_busy) return;
+
+        e.Cancel = true;
+        StatusText.Text = "Nejprve počkejte na dokončení probíhající operace.";
+        MessageBox.Show("RK-Switch právě pracuje se Synology Drive. Počkejte na dokončení operace a zavření zopakujte.",
+            "Probíhá operace", MessageBoxButton.OK, MessageBoxImage.Information);
+    }
+
     private async void Window_Loaded(object sender, RoutedEventArgs e)
     {
-        AppLog.Info("Aplikace 0.7.0 spuštěna.");
+        AppLog.Info("Aplikace 0.8.0 spuštěna.");
         try
         {
             _loadingStartupSetting = true;

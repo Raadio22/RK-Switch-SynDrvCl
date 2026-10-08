@@ -9,6 +9,7 @@ static void Equal(string expected, string actual, string name)
 Equal("FIRMA (192.168.1.2)", ModeClassifier.DisplayName(" 192.168.1.2 "), "Klasifikace FIRMA");
 Equal("MIMO FIRMU (NAS-ZemOlsar)", ModeClassifier.DisplayName("nas-zemolsar"), "Klasifikace QuickConnect");
 Equal("9009D090167D", ModeClassifier.NormalizeMac("90-09-d0-90-16-7d"), "Normalizace MAC");
+Equal("RKSwitchSynDrvCl.App", App.InstanceMutexName, "Mutex aplikace a instalátoru");
 
 if (AutomaticSwitchPolicy.DesiredMode(companyNasAvailable: true) != ConnectionMode.Company)
     throw new Exception("Automatika: dostupný firemní NAS musí zvolit režim FIRMA.");

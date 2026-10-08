@@ -38,6 +38,14 @@ dotnet publish -c Release -r win-x64 --self-contained true
 
 Výsledný samostatný EXE je v `bin\Release\net8.0-windows\win-x64\publish`.
 
+## Instalace a odinstalace
+
+Od verze 0.8.0 je doporučenou distribucí instalační soubor `RK-Switch-SynDrvCl-<verze>-Setup-win-x64.exe`. Instaluje aplikaci pouze pro aktuálního uživatele do `%LOCALAPPDATA%\Programs\RK-Switch-SynDrvCl`, vytvoří položku v nabídce Start a volitelně zástupce na ploše. Administrátorská práva nejsou potřeba.
+
+Aktualizace přes novější instalátor zachová nastavení, uložené heslo i volbu automatického spuštění; existující cesta automatického spuštění se opraví na instalovaný EXE. Odinstalaci spusťte z **Nastavení Windows → Aplikace → Nainstalované aplikace**. Odstraní program, jeho zástupce, automatické spuštění, předvolby, diagnostický log a přihlašovací údaj `RK-Switch-SynDrvCl/Synology-DSM`. Nastavení, klienta ani synchronizované soubory Synology Drive nemaže.
+
+Instalátor lze sestavit skriptem `Installer\Build-Installer.ps1`. Sestavovací mezisoubory ukládá do `D:\ChatGPT\Build` a používá `D:\ChatGPT\Temp`.
+
 ## Ověřovací pořadí
 
 1. Na `RAADIO-BOOK4PRO` zapnout **Pouze otestovat bez změny připojení**.
