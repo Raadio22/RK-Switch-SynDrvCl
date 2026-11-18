@@ -1,3 +1,4 @@
+using System.ComponentModel;
 using System.Diagnostics;
 using System.IO;
 using System.Net;
@@ -28,7 +29,7 @@ internal sealed class SynologyAutomationService
     {
         AppLog.Info("Čtení oficiálního nastavení Synology zahájeno.");
         var main = FindMainWindow(startIfMissing: true);
-        var settings = FindSettingsWindow();
+        var settings = FindSettingsWindow(main?.Current.ProcessId);
         var openedByUs = settings is null;
         if (settings is null)
         {
@@ -61,7 +62,9 @@ internal sealed class SynologyAutomationService
         var target = mode == ConnectionMode.Company ? AppConfig.CompanyAddress : AppConfig.QuickConnectId;
         var main = FindMainWindow(startIfMissing: true)
             ?? throw new InvalidOperationException("Nelze nalézt hlavní okno Synology Drive Client.");
-        var settings = FindSettingsWindow();
+        var mainWindow = new IntPtr(main.Current.NativeWindowHandle);
+        var processId = main.Current.ProcessId;
+        var settings = FindSettingsWindow(processId);
         var openedByUs = settings is null;
         settings ??= OpenSettings(main);
         var submitted = false;
@@ -99,11 +102,10 @@ internal sealed class SynologyAutomationService
             submitted = true;
             AppLog.Info("Oficiální tlačítko OK aktivováno.");
 
-            var confirmationResult = ResolvePostSubmitDialogs(mode, target, TimeSpan.FromSeconds(18));
-            var remainingSettings = confirmationResult.RemainingSettings;
-            if (remainingSettings is not null)
+            var confirmationResult = ResolvePostSubmitDialogs(mode, target, processId, mainWindow, TimeSpan.FromSeconds(18));
+            if (!confirmationResult.Completed)
             {
-                var message = "Oficiální dialog Synology Drive zůstal po potvrzení otevřený. Zkontrolujte případnou chybu přihlášení nebo jiný neočekávaný požadavek.";
+                var message = "Synology Drive zatím nedokončil změnu připojení. Zkontrolujte jeho otevřená okna.";
                 if (mode == ConnectionMode.Remote)
                 {
                     AppLog.Info($"{message} Režim MIMO FIRMU nebude blokován vyskakovacím oknem RK-Switch.");
@@ -115,7 +117,10 @@ internal sealed class SynologyAutomationService
             var handled = confirmationResult.HandledQuickConnectOffer || confirmationResult.HandledCertificate
                 ? " Potřebná potvrzení Synology byla bezpečně vyřízena."
                 : "";
-            return new(target, $"Synology Drive byl přepnut na {target}.{handled} Uložené uživatelské jméno a synchronizační úlohy zůstaly beze změny.");
+            var successMessage = $"Synology Drive byl přepnut na {target}.{handled} Uložené uživatelské jméno a synchronizační úlohy zůstaly beze změny.";
+            var windowClosed = TryCloseMainWindow(mainWindow, processId);
+            return new(target, windowClosed ? successMessage : $"{successMessage} Okno Synology Drive se nepodařilo zavřít.",
+                NeedsUserAttention: !windowClosed, SwitchCompleted: true);
         }
         catch
         {
@@ -142,7 +147,7 @@ internal sealed class SynologyAutomationService
     {
         var window = FindTopWindow(e =>
             SafeName(e).Contains("Synology Drive Client", StringComparison.OrdinalIgnoreCase) &&
-            !SettingsTitles.Any(t => string.Equals(SafeName(e), t, StringComparison.OrdinalIgnoreCase)));
+            IsSynologyUi(e));
         if (window is not null || !startIfMissing) return window;
 
         var exe = Path.Combine(Environment.GetFolderPath(Environment.SpecialFolder.LocalApplicationData),
@@ -152,8 +157,9 @@ internal sealed class SynologyAutomationService
         return WaitFor(() => FindMainWindow(false), TimeSpan.FromSeconds(8));
     }
 
-    private static AutomationElement? FindSettingsWindow() =>
+    private static AutomationElement? FindSettingsWindow(int? processId = null) =>
         FindTopWindow(e => SettingsTitles.Any(t => string.Equals(SafeName(e), t, StringComparison.OrdinalIgnoreCase)) &&
+                           (processId is null ? IsSynologyUi(e) : e.Current.ProcessId == processId) &&
                            FindNamedElement(e, ServerFieldNames) is not null);
 
     private static AutomationElement OpenSettings(AutomationElement main)
@@ -162,7 +168,8 @@ internal sealed class SynologyAutomationService
         var button = FindNamedElement(main, EditConnectionNames)
             ?? throw new InvalidOperationException("V hlavním okně nebylo nalezeno tlačítko Upravit připojení.");
         Invoke(button);
-        return WaitFor(FindSettingsWindow, TimeSpan.FromSeconds(6))
+        var processId = main.Current.ProcessId;
+        return WaitFor(() => FindSettingsWindow(processId), TimeSpan.FromSeconds(6))
             ?? throw new InvalidOperationException("Dialog Nastavení se po volbě Upravit připojení neotevřel.");
     }
 
@@ -206,33 +213,36 @@ internal sealed class SynologyAutomationService
         finally { plainText = string.Empty; }
     }
 
-    private PostSubmitResult ResolvePostSubmitDialogs(ConnectionMode mode, string target, TimeSpan timeout)
+    private PostSubmitResult ResolvePostSubmitDialogs(
+        ConnectionMode mode, string target, int processId, IntPtr mainWindow, TimeSpan timeout)
     {
-        var until = DateTime.UtcNow + timeout;
+        var elapsed = Stopwatch.StartNew();
+        TimeSpan? clearSince = null;
         var handledQuickConnectOffer = false;
         var handledCertificate = false;
 
         do
         {
+            var quickConnectOffer = FindDialog(processId, SynologyDialogKind.QuickConnectOffer, NotNowNames);
             if (mode == ConnectionMode.Company && !handledQuickConnectOffer)
             {
-                var quickConnectOffer = FindDialog(SynologyDialogKind.QuickConnectOffer, NotNowNames);
                 if (quickConnectOffer is not null)
                 {
                     InvokeNamedButton(quickConnectOffer, NotNowNames);
                     handledQuickConnectOffer = true;
+                    clearSince = null;
                     AppLog.Info("Dotaz Synology na přechod k QuickConnect vyřízen volbou Nyní ne.");
                     Thread.Sleep(250);
                     continue;
                 }
             }
 
+            var certificate = FindDialog(processId, SynologyDialogKind.UntrustedCertificate, ProceedAnywayNames);
             if (mode == ConnectionMode.Company && !handledCertificate)
             {
-                var certificate = FindDialog(SynologyDialogKind.UntrustedCertificate, ProceedAnywayNames);
                 if (certificate is not null)
                 {
-                    var settings = FindSettingsWindow();
+                    var settings = FindSettingsWindow(processId);
                     if (settings is not null &&
                         !string.Equals(ReadServer(settings)?.Trim(), target, StringComparison.OrdinalIgnoreCase))
                         throw new InvalidOperationException("Certifikátové potvrzení neodpovídá cílové adrese firemního NASu.");
@@ -240,28 +250,37 @@ internal sealed class SynologyAutomationService
                     _networkProbe.VerifyCompanyNasAsync().GetAwaiter().GetResult();
                     InvokeNamedButton(certificate, ProceedAnywayNames);
                     handledCertificate = true;
+                    clearSince = null;
                     AppLog.Info("Nedůvěryhodný SSL certifikát místního NASu potvrzen až po opakované kontrole TCP a MAC.");
                     Thread.Sleep(250);
                     continue;
                 }
             }
 
-            var remainingSettings = FindSettingsWindow();
-            if (remainingSettings is null &&
-                FindDialog(SynologyDialogKind.QuickConnectOffer, NotNowNames) is null &&
-                FindDialog(SynologyDialogKind.UntrustedCertificate, ProceedAnywayNames) is null)
-                return new(null, handledQuickConnectOffer, handledCertificate);
+            if (quickConnectOffer is null && certificate is null && FindSettingsWindow(processId) is null &&
+                (!IsVisibleWindowOfProcess(mainWindow, processId) || IsWindowEnabled(mainWindow)))
+            {
+                clearSince ??= elapsed.Elapsed;
+                if (elapsed.Elapsed - clearSince.Value >= TimeSpan.FromSeconds(1.2))
+                    return new(true, handledQuickConnectOffer, handledCertificate);
+            }
+            else
+            {
+                clearSince = null;
+            }
 
             Thread.Sleep(150);
-        } while (DateTime.UtcNow < until);
+        } while (elapsed.Elapsed < timeout);
 
-        return new(FindSettingsWindow(), handledQuickConnectOffer, handledCertificate);
+        return new(false, handledQuickConnectOffer, handledCertificate);
     }
 
-    private static AutomationElement? FindDialog(SynologyDialogKind kind, IEnumerable<string> buttonNames)
+    private static AutomationElement? FindDialog(int processId, SynologyDialogKind kind, IEnumerable<string> buttonNames)
     {
         var windows = AutomationElement.RootElement.FindAll(TreeScope.Children,
-            new PropertyCondition(AutomationElement.ControlTypeProperty, ControlType.Window));
+            new AndCondition(
+                new PropertyCondition(AutomationElement.ControlTypeProperty, ControlType.Window),
+                new PropertyCondition(AutomationElement.ProcessIdProperty, processId)));
         foreach (AutomationElement window in windows)
         {
             if (DialogMatches(window, kind, buttonNames)) return window;
@@ -368,6 +387,42 @@ internal sealed class SynologyAutomationService
     private static string SafeName(AutomationElement element) { try { return element.Current.Name ?? ""; } catch { return ""; } }
     private static string SafeClassName(AutomationElement element) { try { return element.Current.ClassName ?? ""; } catch { return ""; } }
 
+    private static bool IsSynologyUi(AutomationElement element)
+    {
+        try
+        {
+            using var process = Process.GetProcessById(element.Current.ProcessId);
+            return string.Equals(process.ProcessName, "cloud-drive-ui", StringComparison.OrdinalIgnoreCase);
+        }
+        catch (Exception ex) when (ex is ArgumentException or InvalidOperationException or Win32Exception or ElementNotAvailableException)
+        {
+            return false;
+        }
+    }
+
+    private static bool TryCloseMainWindow(IntPtr window, int processId)
+    {
+        const uint wmClose = 0x0010;
+        if (window == IntPtr.Zero) return false;
+        if (!IsVisibleWindowOfProcess(window, processId)) return true;
+        if (!IsWindowEnabled(window) || !PostMessage(window, wmClose, IntPtr.Zero, IntPtr.Zero))
+        {
+            AppLog.Info("Okno Synology Drive nepřijalo požadavek na zavření.");
+            return false;
+        }
+
+        var elapsed = Stopwatch.StartNew();
+        while (IsVisibleWindowOfProcess(window, processId) && elapsed.Elapsed < TimeSpan.FromSeconds(3))
+            Thread.Sleep(150);
+
+        var closed = !IsVisibleWindowOfProcess(window, processId);
+        AppLog.Info(closed ? "Hlavní okno Synology Drive bylo zavřeno." : "Hlavní okno Synology Drive zůstalo otevřené.");
+        return closed;
+    }
+
+    private static bool IsVisibleWindowOfProcess(IntPtr window, int processId) =>
+        IsWindowVisible(window) && GetWindowThreadProcessId(window, out var owner) != 0 && owner == (uint)processId;
+
     private static T? WaitFor<T>(Func<T?> probe, TimeSpan timeout) where T : class
     {
         var until = DateTime.UtcNow + timeout;
@@ -378,8 +433,20 @@ internal sealed class SynologyAutomationService
     [DllImport("user32.dll")]
     private static extern bool SetForegroundWindow(IntPtr hWnd);
 
+    [DllImport("user32.dll", EntryPoint = "PostMessageW")]
+    private static extern bool PostMessage(IntPtr window, uint message, IntPtr wParam, IntPtr lParam);
+
+    [DllImport("user32.dll")]
+    private static extern bool IsWindowVisible(IntPtr window);
+
+    [DllImport("user32.dll")]
+    private static extern bool IsWindowEnabled(IntPtr window);
+
+    [DllImport("user32.dll")]
+    private static extern uint GetWindowThreadProcessId(IntPtr window, out uint processId);
+
     private sealed record PostSubmitResult(
-        AutomationElement? RemainingSettings,
+        bool Completed,
         bool HandledQuickConnectOffer,
         bool HandledCertificate);
 }

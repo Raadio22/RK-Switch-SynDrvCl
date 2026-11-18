@@ -11,4 +11,5 @@ internal static class AppConfig
 internal enum ConnectionMode { Company, Remote }
 internal enum TransferState { Unknown, Idle, Active }
 
-internal sealed record OperationResult(string? CurrentServer, string Message, bool NeedsUserAttention = false);
+internal sealed record OperationResult(
+    string? CurrentServer, string Message, bool NeedsUserAttention = false, bool SwitchCompleted = false);

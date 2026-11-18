@@ -6,6 +6,7 @@ using System.Security;
 using System.Windows;
 using System.Windows.Media;
 using System.Windows.Threading;
+using Forms = System.Windows.Forms;
 
 namespace RKSwitch.SynDrvCl;
 
@@ -21,6 +22,7 @@ public partial class MainWindow : Window
     private readonly DispatcherTimer _stateTimer;
     private CancellationTokenSource? _networkChangeDebounce;
     private CancellationTokenSource? _startupRecovery;
+    private Forms.NotifyIcon? _trayIcon;
     private bool _busy;
     private bool _autoSwitchRunning;
     private bool _startupRecoveryRunning;
@@ -53,6 +55,13 @@ public partial class MainWindow : Window
             _startupRecovery?.Cancel();
             _startupRecovery?.Dispose();
             NetworkChange.NetworkAddressChanged -= NetworkAddressChanged;
+            if (_trayIcon is not null)
+            {
+                _trayIcon.Visible = false;
+                _trayIcon.ContextMenuStrip?.Dispose();
+                _trayIcon.Icon?.Dispose();
+                _trayIcon.Dispose();
+            }
         };
     }
 
@@ -70,7 +79,8 @@ public partial class MainWindow : Window
 
     private async void Window_Loaded(object sender, RoutedEventArgs e)
     {
-        AppLog.Info("Aplikace 0.8.0 spuštěna.");
+        Loaded -= Window_Loaded;
+        AppLog.Info("Aplikace 0.8.1 spuštěna.");
         try
         {
             _loadingStartupSetting = true;
@@ -290,6 +300,7 @@ public partial class MainWindow : Window
     private async Task EvaluateAutomaticSwitchAsync(string reason)
     {
         if (AutoSwitchCheckBox.IsChecked != true || _busy || _autoSwitchRunning || _startupRecoveryRunning) return;
+        if (OwnedWindows.OfType<Window>().Any(window => window.IsVisible)) return;
         if (IsDryRun)
         {
             UpdateAutoSwitchStatus("pozastavená testovacím režimem");
@@ -299,6 +310,7 @@ public partial class MainWindow : Window
         _autoSwitchRunning = true;
         SetBusy(true, "Automatika zjišťuje dostupnou síť…");
         SecureString? password = null;
+        var closeAfterSwitch = false;
         try
         {
             AppLog.Info($"Automatická kontrola zahájena. Důvod: {reason}.");
@@ -359,13 +371,14 @@ public partial class MainWindow : Window
             _lastAutomaticSwitch = DateTimeOffset.Now;
             UpdateAutoSwitchStatus(result.NeedsUserAttention
                 ? "vyžaduje ruční kontrolu"
-                : $"zapnutá · přepnuto na {networkName}");
+                : result.SwitchCompleted ? $"zapnutá · přepnuto na {networkName}" : "zapnutá · kontrola dokončena");
             AppLog.Info($"Automatické přepnutí dokončeno. {result.Message}");
             if (result.NeedsUserAttention)
             {
                 HeaderStateText.Text = "Ruční kontrola";
                 HeaderStateDot.Fill = Amber;
             }
+            closeAfterSwitch = result.SwitchCompleted && !result.NeedsUserAttention;
         }
         catch (Exception ex)
         {
@@ -381,6 +394,8 @@ public partial class MainWindow : Window
             SetBusy(false);
             _autoSwitchRunning = false;
         }
+
+        if (closeAfterSwitch) CloseAfterSwitch();
     }
 
     private void UpdateAutoSwitchStatus(string? detail = null)
@@ -480,6 +495,7 @@ public partial class MainWindow : Window
         }
 
         SetBusy(true, mode == ConnectionMode.Company ? "Bezpečně ověřuji místní NAS…" : "Připravuji QuickConnect…");
+        var closeAfterSwitch = false;
         try
         {
             var result = await Task.Run(() => _synology.Switch(mode, dryRun, password));
@@ -492,6 +508,7 @@ public partial class MainWindow : Window
                 HeaderStateDot.Fill = Amber;
                 MessageBox.Show(result.Message, "Vyžadována ruční kontrola", MessageBoxButton.OK, MessageBoxImage.Information);
             }
+            closeAfterSwitch = result.SwitchCompleted && !result.NeedsUserAttention;
         }
         catch (Exception ex)
         {
@@ -506,6 +523,53 @@ public partial class MainWindow : Window
             LastCheckedText.Text = $"Aktualizováno {_lastRefresh:HH:mm:ss}";
             SetBusy(false);
         }
+
+        if (closeAfterSwitch) CloseAfterSwitch();
+    }
+
+    private void CloseAfterSwitch()
+    {
+        if (AutoSwitchCheckBox.IsChecked != true)
+        {
+            Close();
+            return;
+        }
+
+        try
+        {
+            _trayIcon ??= CreateTrayIcon();
+            _trayIcon.Visible = true;
+            Hide();
+        }
+        catch (Exception ex)
+        {
+            AppLog.Error("RK-Switch se nepodařilo skrýt do oznamovací oblasti", ex);
+        }
+    }
+
+    private Forms.NotifyIcon CreateTrayIcon()
+    {
+        using var stream = Application.GetResourceStream(new Uri("Assets/rk-switch.ico", UriKind.Relative))!.Stream;
+        using var resourceIcon = new System.Drawing.Icon(stream);
+        var menu = new Forms.ContextMenuStrip();
+        menu.Items.Add("Otevřít RK-Switch", null, (_, _) => Dispatcher.BeginInvoke(new Action(RestoreFromTray)));
+        menu.Items.Add("Ukončit RK-Switch", null, (_, _) => Dispatcher.BeginInvoke(new Action(Close)));
+        var icon = new Forms.NotifyIcon
+        {
+            Icon = (System.Drawing.Icon)resourceIcon.Clone(),
+            Text = "RK-Switch SynDrvCl",
+            ContextMenuStrip = menu
+        };
+        icon.DoubleClick += (_, _) => RestoreFromTray();
+        return icon;
+    }
+
+    private void RestoreFromTray()
+    {
+        Show();
+        if (WindowState == WindowState.Minimized) WindowState = WindowState.Normal;
+        Activate();
+        if (_trayIcon is not null) _trayIcon.Visible = false;
     }
 
     private void UpdateCurrentState(string? server)

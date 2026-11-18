@@ -15,7 +15,7 @@ public partial class App : Application
         if (!createdNew)
         {
             mutex.Dispose();
-            MessageBox.Show("RK-Switch SynDrvCl už je spuštěný.", "RK-Switch SynDrvCl",
+            MessageBox.Show("RK-Switch SynDrvCl už je spuštěný. Pokud je skrytý, otevřete ho ikonou v oznamovací oblasti Windows.", "RK-Switch SynDrvCl",
                 MessageBoxButton.OK, MessageBoxImage.Information);
             Shutdown();
             return;
@@ -32,13 +32,13 @@ public partial class App : Application
         var main = new MainWindow();
         main.InitialLoadCompleted += (_, _) => initialLoad.TrySetResult();
         MainWindow = main;
+        ShutdownMode = ShutdownMode.OnMainWindowClose;
         main.Show();
         splash.Activate();
 
         await Task.WhenAll(minimumDisplayTime, initialLoad.Task);
         splash.Close();
-        main.Activate();
-        ShutdownMode = ShutdownMode.OnMainWindowClose;
+        if (main.IsVisible) main.Activate();
     }
 
     protected override void OnExit(ExitEventArgs e)

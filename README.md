@@ -38,6 +38,10 @@ dotnet publish -c Release -r win-x64 --self-contained true
 
 Výsledný samostatný EXE je v `bin\Release\net8.0-windows\win-x64\publish`.
 
+## Zavření oken po přepnutí
+
+Po dokončené změně trasy se zavře okno Synology Drive Client i okno RK-Switch. Při zapnutém automatickém přepínání RK-Switch dál sleduje síť a lze jej znovu otevřít ikonou v oznamovací oblasti Windows. Testovací průchod a nedokončené přepnutí ponechají okno RK-Switch otevřené.
+
 ## Instalace a odinstalace
 
 Od verze 0.8.0 je doporučenou distribucí instalační soubor `RK-Switch-SynDrvCl-<verze>-Setup-win-x64.exe`. Instaluje aplikaci pouze pro aktuálního uživatele do `%LOCALAPPDATA%\Programs\RK-Switch-SynDrvCl`, vytvoří položku v nabídce Start a volitelně zástupce na ploše. Administrátorská práva nejsou potřeba.
